@@ -3,7 +3,7 @@ module github.com/itmisx/gormx
 go 1.22
 
 require (
-	github.com/itmisx/logger v0.0.3
+	github.com/itmisx/logx v0.0.5
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.12
 )
