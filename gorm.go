@@ -74,6 +74,8 @@ func New(cfg Config) (*gorm.DB, error) {
 
 	if cfg.Debug {
 		db = db.Debug()
+	} else {
+		db = db.Session(&gorm.Session{})
 	}
 
 	sqlDB, err := db.DB()
