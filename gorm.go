@@ -49,7 +49,7 @@ func New(cfg Config) (*gorm.DB, error) {
 			SlowThreshold:             time.Second,   // 慢 SQL 阈值
 			LogLevel:                  glogger.Error, // 日志级别
 			IgnoreRecordNotFoundError: true,          // 忽略ErrRecordNotFound（记录未找到）错误
-			Colorful:                  false,         // 禁用彩色打印
+			Colorful:                  true,          // 彩色打印
 		},
 	)
 
