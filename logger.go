@@ -128,13 +128,7 @@ func (l mylogger) Error(ctx context.Context, msg string, data ...interface{}) {
 		if LocalDebug {
 			l.Printf(l.errStr+msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
 		} else {
-			var strs []string
-			for _, s := range data {
-				if str, ok := s.(string); ok {
-					strs = append(strs, str)
-				}
-			}
-			logx.Info(ctx, msg, logx.String("line", utils.FileWithLineNum()), logx.StringSlice("detail", strs))
+			logx.Info(ctx, msg, logx.String("line", utils.FileWithLineNum()), logx.Any("detail", data))
 		}
 	}
 }
