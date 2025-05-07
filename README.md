@@ -14,7 +14,7 @@ go get -u -v github.com/itmisx/gormx
 type Config struct {
 	Username       string `mapstructure:"username" yaml:"username"`
 	Password       string `mapstructure:"password" yaml:"password"`
-	Host           string `mapstructure:"host" yaml:"host"`
+	Addrs          string `mapstructure:"addrs" yaml:"addrs"`
 	Port           string `mapstructure:"port" yaml:"port"`
 	Database       string `mapstructure:"database" yaml:"database"`
 	Charset        string `mapstructure:"charset" yaml:"charset"`
