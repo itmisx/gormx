@@ -82,6 +82,13 @@ func (p *partition) ExistsNextMonthPartition(ctx context.Context) (bool, error) 
 
 // AddCurrentMonthPartition 新增当月分区
 func (p *partition) AddCurrentMonthPartition(ctx context.Context) error {
+	exists, err := p.ExistsCurrentMonthPartition(ctx)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
 	partitionName := "p" + strings.ReplaceAll(carbon.Now().AddMonths(1).StartOfMonth().ToDateString(), "-", "")
 	partitionRange := carbon.Now().AddMonths(1).StartOfMonth().ToDateString()
 	createPartitionSQL := fmt.Sprintf(
@@ -95,6 +102,13 @@ func (p *partition) AddCurrentMonthPartition(ctx context.Context) error {
 
 // AddNextMonthPartition 新增下月分区
 func (p *partition) AddNextMonthPartition(ctx context.Context) error {
+	exists, err := p.ExistsNextMonthPartition(ctx)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return nil
+	}
 	partitionName := "p" + strings.ReplaceAll(carbon.Now().AddMonths(2).StartOfMonth().ToDateString(), "-", "")
 	partitionRange := carbon.Now().AddMonths(2).StartOfMonth().ToDateString()
 	sql := fmt.Sprintf(
