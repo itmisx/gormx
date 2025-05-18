@@ -34,11 +34,11 @@ import (
 )
 
 type partition struct {
-	DB              *gorm.DB       // *gorm.DB
-	Database        string         // 数据库名
-	Table           string         // 表名
-	PartitionUnit   PartitionUnitT // 分区单位 1-按天 2-按月
-	RetentionMonths int            // 分区数据的保留时长
+	db              *gorm.DB       // *gorm.DB
+	database        string         // 数据库名
+	table           string         // 表名
+	partitionUnit   PartitionUnitT // 分区单位 1-按天 2-按月
+	retentionMonths int            // 分区数据的保留时长
 }
 
 type PartitionUnitT int // 分区单元
@@ -60,20 +60,20 @@ func NewPartition(
 	retentionMonths int,
 ) *partition {
 	return &partition{
-		DB:              db,
-		Database:        database,
-		Table:           table,
-		PartitionUnit:   partitionUnit,
-		RetentionMonths: retentionMonths,
+		db:              db,
+		database:        database,
+		table:           table,
+		partitionUnit:   partitionUnit,
+		retentionMonths: retentionMonths,
 	}
 }
 
 // List 获取所有分区
 func (p *partition) list(ctx context.Context) (partitions []string, err error) {
 	// 获取所有分区
-	err = p.DB.WithContext(ctx).Table("information_schema.PARTITIONS").
-		Where("TABLE_SCHEMA = ?", p.Database).
-		Where("TABLE_NAME = ?", p.Table).
+	err = p.db.WithContext(ctx).Table("information_schema.PARTITIONS").
+		Where("TABLE_SCHEMA = ?", p.database).
+		Where("TABLE_NAME = ?", p.table).
 		Where("PARTITION_NAME IS NOT NULL").
 		Pluck("PARTITION_NAME", &partitions).
 		Error
@@ -123,11 +123,11 @@ func (p *partition) addDayPartition(ctx context.Context, days int) error {
 	partitionRange := carbon.Now().AddDays(days).StartOfDay().ToDateString()
 	createPartitionSQL := fmt.Sprintf(
 		"ALTER TABLE %s ADD PARTITION(PARTITION %s VALUES LESS THAN (UNIX_TIMESTAMP('%s')))",
-		p.Table,
+		p.table,
 		partitionName,
 		partitionRange,
 	)
-	return p.DB.WithContext(ctx).Exec(createPartitionSQL).Error
+	return p.db.WithContext(ctx).Exec(createPartitionSQL).Error
 }
 
 // AddMonthPartition 新增月分区
@@ -143,11 +143,11 @@ func (p *partition) addMonthPartition(ctx context.Context, months int) error {
 	partitionRange := carbon.Now().AddMonths(months).StartOfMonth().ToDateString()
 	createPartitionSQL := fmt.Sprintf(
 		"ALTER TABLE %s ADD PARTITION(PARTITION %s VALUES LESS THAN (UNIX_TIMESTAMP('%s')))",
-		p.Table,
+		p.table,
 		partitionName,
 		partitionRange,
 	)
-	return p.DB.WithContext(ctx).Exec(createPartitionSQL).Error
+	return p.db.WithContext(ctx).Exec(createPartitionSQL).Error
 }
 
 // AddYearPartition 新增年分区
@@ -163,16 +163,16 @@ func (p *partition) addYearPartition(ctx context.Context, years int) error {
 	partitionRange := carbon.Now().AddYears(years).StartOfYear().ToDateString()
 	sql := fmt.Sprintf(
 		"ALTER TABLE %s ADD PARTITION(PARTITION %s VALUES LESS THAN (UNIX_TIMESTAMP('%s')))",
-		p.Table,
+		p.table,
 		partitionName,
 		partitionRange,
 	)
-	return p.DB.WithContext(ctx).Exec(sql).Error
+	return p.db.WithContext(ctx).Exec(sql).Error
 }
 
 // dropExpiredPartitions 删除过期分区
 func (p *partition) dropExpiredPartitions(ctx context.Context) (err error) {
-	if p.RetentionMonths <= 0 {
+	if p.retentionMonths <= 0 {
 		return nil
 	}
 	partitions, err := p.list(ctx)
@@ -180,18 +180,18 @@ func (p *partition) dropExpiredPartitions(ctx context.Context) (err error) {
 		return err
 	}
 	// 删除过期的分区
-	earliestPartition, _ := strconv.Atoi(strings.ReplaceAll(carbon.Now().SubMonths(p.RetentionMonths-1).StartOfMonth().ToDateString(), "-", ""))
+	earliestPartition, _ := strconv.Atoi(strings.ReplaceAll(carbon.Now().SubMonths(p.retentionMonths-1).StartOfMonth().ToDateString(), "-", ""))
 	for _, partition := range partitions {
 		partitionNum, _ := strconv.Atoi(strings.TrimLeft(partition, "p"))
 		if partitionNum < earliestPartition {
 			sql := fmt.Sprintf(
 				"ALTER TABLE %s DROP PARTITION p%d",
-				p.Table,
+				p.table,
 				partitionNum,
 			)
-			err = p.DB.WithContext(ctx).Exec(sql).Error
+			err = p.db.WithContext(ctx).Exec(sql).Error
 			if err != nil {
-				logx.Error(context.Background(), fmt.Sprintf("drop  table %s partition %s failed", p.Table, partition))
+				logx.Error(context.Background(), fmt.Sprintf("drop  table %s partition %s failed", p.table, partition))
 			}
 		}
 	}
@@ -204,7 +204,7 @@ func (p *partition) Start() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	// 初始化
-	switch p.PartitionUnit {
+	switch p.partitionUnit {
 	// 按天分区
 	case PartitionUnitDay:
 		p.addDayPartition(ctx, 0)
@@ -234,7 +234,7 @@ func (p *partition) Start() {
 			func() {
 				ctx1, cancel1 := context.WithTimeout(context.Background(), time.Second*30)
 				defer cancel1()
-				switch p.PartitionUnit {
+				switch p.partitionUnit {
 				// 按天分区
 				case PartitionUnitDay:
 					p.addDayPartition(ctx1, 0)
