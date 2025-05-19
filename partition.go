@@ -208,17 +208,14 @@ func (p *partition) Start() {
 	case PartitionUnitDay:
 		p.addDayPartition(ctx, 1)
 		p.addDayPartition(ctx, 2)
-		p.addDayPartition(ctx, 3)
 	// 按月分区
 	case PartitionUnitMonth:
 		p.addMonthPartition(ctx, 1)
 		p.addMonthPartition(ctx, 2)
-		p.addMonthPartition(ctx, 3)
 	// 按年分区
 	case PartitionUnitYear:
 		p.addYearPartition(ctx, 1)
 		p.addYearPartition(ctx, 2)
-		p.addYearPartition(ctx, 3)
 	default:
 		panic("unsupported partition unit type")
 	}
@@ -238,17 +235,14 @@ func (p *partition) Start() {
 				case PartitionUnitDay:
 					p.addDayPartition(ctx1, 1)
 					p.addDayPartition(ctx1, 2)
-					p.addDayPartition(ctx1, 3)
 				// 按月分区
 				case PartitionUnitMonth:
 					p.addMonthPartition(ctx1, 1)
 					p.addMonthPartition(ctx1, 2)
-					p.addMonthPartition(ctx1, 3)
 				// 按年分区
 				case PartitionUnitYear:
 					p.addYearPartition(ctx1, 1)
 					p.addYearPartition(ctx1, 2)
-					p.addYearPartition(ctx1, 3)
 				}
 				p.dropExpiredPartitions(ctx1)
 			}()
