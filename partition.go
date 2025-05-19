@@ -199,7 +199,6 @@ func (p *partition) dropExpiredPartitions(ctx context.Context) (err error) {
 }
 
 // Start 启动分区自动管理
-// 创建3个避免数据找不到分区，分区语句按照utc转换的时间戳，这个时间戳和当前时间戳可能不一致
 func (p *partition) Start() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -207,19 +206,19 @@ func (p *partition) Start() {
 	switch p.partitionUnit {
 	// 按天分区
 	case PartitionUnitDay:
-		p.addDayPartition(ctx, 0)
 		p.addDayPartition(ctx, 1)
 		p.addDayPartition(ctx, 2)
+		p.addDayPartition(ctx, 3)
 	// 按月分区
 	case PartitionUnitMonth:
-		p.addMonthPartition(ctx, 0)
 		p.addMonthPartition(ctx, 1)
 		p.addMonthPartition(ctx, 2)
+		p.addMonthPartition(ctx, 3)
 	// 按年分区
 	case PartitionUnitYear:
-		p.addYearPartition(ctx, 0)
 		p.addYearPartition(ctx, 1)
 		p.addYearPartition(ctx, 2)
+		p.addYearPartition(ctx, 3)
 	default:
 		panic("unsupported partition unit type")
 	}
@@ -237,19 +236,19 @@ func (p *partition) Start() {
 				switch p.partitionUnit {
 				// 按天分区
 				case PartitionUnitDay:
-					p.addDayPartition(ctx1, 0)
 					p.addDayPartition(ctx1, 1)
 					p.addDayPartition(ctx1, 2)
+					p.addDayPartition(ctx1, 3)
 				// 按月分区
 				case PartitionUnitMonth:
-					p.addMonthPartition(ctx1, 0)
 					p.addMonthPartition(ctx1, 1)
 					p.addMonthPartition(ctx1, 2)
+					p.addMonthPartition(ctx1, 3)
 				// 按年分区
 				case PartitionUnitYear:
-					p.addYearPartition(ctx1, 0)
 					p.addYearPartition(ctx1, 1)
 					p.addYearPartition(ctx1, 2)
+					p.addYearPartition(ctx1, 3)
 				}
 				p.dropExpiredPartitions(ctx1)
 			}()
