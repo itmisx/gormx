@@ -14,7 +14,7 @@ go get -u -v github.com/itmisx/gormx
 type Config struct {
   Username     string   `mapstructure:"username" yaml:"username"`             // 用户名
   Password     string   `mapstructure:"password" yaml:"password"`             // 密码
-  Addrs        []string `mapstructure:"addrs" yaml:"addrs"`                   // 连接地址(host:port),多个以逗号分隔,Addrs[0]为. master，其余为slave
+  Addrs        []string `mapstructure:"addrs" yaml:"addrs"`                   // 连接地址(host:port),Addrs[0]为. master，其余为slave
   Database     string   `mapstructure:"database" yaml:"database"`             // 要连接的数据库
   Charset      string   `mapstructure:"charset" yaml:"charset"`               // 字符集
   Debug        bool     `mapstructure:"debug" yaml:"debug"`                   // 是否开启调试模式
@@ -52,7 +52,7 @@ partition := gormx.NewPartition(
 partition.Start()
 ```
 
-##### newPartition 参数说明
+##### 参数说明
 
 - db，gorm 连接
 - database，操作的数据库
@@ -68,28 +68,27 @@ partition.Start()
 ### 六、Online DDL
 
 - 表需要使用 id(int)作为主键
-
-  - 自动判断是否支持 Online ddl，如果不支持则自动创建新表，并通过 gorm 的钩子进行双写，并自动进行工作表切换。旧表需要手动删除##### 示例
-
-    ```go
-    migration := NewMigration(
-    	db,
-    	"migration_test",
-    	nil, nil, nil,
-    	`alter table migration_test
-    	drop primary key,
-    	add primary key(id,created_at)
-    	PARTITION BY RANGE (created_at) (
-    	    PARTITION p20241101 VALUES LESS THAN (UNIX_TIMESTAMP('2024-11-01')),
-    	    PARTITION p20241201 VALUES LESS THAN (UNIX_TIMESTAMP('2024-12-01')),
-    	    PARTITION p20250101 VALUES LESS THAN (UNIX_TIMESTAMP('2025-01-01')),
-    	   PARTITION p20250201 VALUES LESS THAN (UNIX_TIMESTAMP('2025-02-01')),
-    		  PARTITION p20250301 VALUES LESS THAN (UNIX_TIMESTAMP('2025-03-01')),
-    		  PARTITION p20250401 VALUES LESS THAN (UNIX_TIMESTAMP('2025-04-01')),
-    		  PARTITION p20250501 VALUES LESS THAN (UNIX_TIMESTAMP('2025-05-01')),
-    		  PARTITION p20250601 VALUES LESS THAN (UNIX_TIMESTAMP('2025-06-01')),
-    		  PARTITION p20250701 VALUES LESS THAN (UNIX_TIMESTAMP('2025-07-01'))
-    		)`,
-    )
-    migration.Start()
-    ```
+- 自动判断是否支持 Online ddl，如果不支持则自动创建新表，并通过 gorm 的钩子进行双写，并自动进行工作表切换。旧表需要手动删除
+- 示例
+```go
+migration := NewMigration(
+  db,
+  "migration_test",
+  nil, nil, nil,
+  `alter table migration_test
+  drop primary key,
+  add primary key(id,created_at)
+  PARTITION BY RANGE (created_at) (
+      PARTITION p20241101 VALUES LESS THAN (UNIX_TIMESTAMP('2024-11-01')),
+      PARTITION p20241201 VALUES LESS THAN (UNIX_TIMESTAMP('2024-12-01')),
+      PARTITION p20250101 VALUES LESS THAN (UNIX_TIMESTAMP('2025-01-01')),
+      PARTITION p20250201 VALUES LESS THAN (UNIX_TIMESTAMP('2025-02-01')),
+      PARTITION p20250301 VALUES LESS THAN (UNIX_TIMESTAMP('2025-03-01')),
+      PARTITION p20250401 VALUES LESS THAN (UNIX_TIMESTAMP('2025-04-01')),
+      PARTITION p20250501 VALUES LESS THAN (UNIX_TIMESTAMP('2025-05-01')),
+      PARTITION p20250601 VALUES LESS THAN (UNIX_TIMESTAMP('2025-06-01')),
+      PARTITION p20250701 VALUES LESS THAN (UNIX_TIMESTAMP('2025-07-01'))
+  )`,
+)
+migration.Start()
+```
