@@ -14,7 +14,7 @@ go get -u -v github.com/itmisx/gormx
 type Config struct {
   Username     string   `mapstructure:"username" yaml:"username"`             // 用户名
   Password     string   `mapstructure:"password" yaml:"password"`             // 密码
-  Addrs        []string `mapstructure:"addrs" yaml:"addrs"`                   // 连接地址(host:port),多个以逗号分隔,Addrs[0]为. master，其余为slave
+  Addrs        []string `mapstructure:"addrs" yaml:"addrs"`                   // 连接地址(host:port),Addrs[0]为. master，其余为slave
   Database     string   `mapstructure:"database" yaml:"database"`             // 要连接的数据库
   Charset      string   `mapstructure:"charset" yaml:"charset"`               // 字符集
   Debug        bool     `mapstructure:"debug" yaml:"debug"`                   // 是否开启调试模式
