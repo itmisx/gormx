@@ -11,6 +11,7 @@ import (
 	"github.com/itmisx/logx"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/plugin/dbresolver"
 )
 
 // 将Migration匿名嵌套到要迁移的结构体
@@ -166,10 +167,10 @@ func (m *Migration) GetMigrateTempTable(status migrationStatus) string {
 		return ""
 	}
 	var record migrationLog
-	if !(m.DB.Migrator()).HasTable(&migrationLog{}) {
-		m.DB.Migrator().AutoMigrate(&migrationLog{})
+	if !(m.DB.Clauses(dbresolver.Write).Migrator()).HasTable(&migrationLog{}) {
+		m.DB.Clauses(dbresolver.Write).Migrator().AutoMigrate(&migrationLog{})
 	}
-	m.DB.Model(&migrationLog{}).
+	m.DB.Clauses(dbresolver.Write).Model(&migrationLog{}).
 		Where("status = ?", int(status)).
 		Order("id desc").
 		Take(&record)
