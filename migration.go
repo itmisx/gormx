@@ -233,27 +233,34 @@ func (m *Migration) Start() error {
 			// 创建新表
 			// 先复制原表结果
 			newTableName := fmt.Sprintf(m.TableName+"_%d", time.Now().UnixMilli())
-			newTableDDL := strings.Replace(oldTableDDL, m.TableName, newTableName, 1)
-			err = tx.Exec(newTableDDL).Error
+			copyTableDDL := strings.Replace(oldTableDDL, m.TableName, newTableName, 1)
+			err = tx.Exec(copyTableDDL).Error
 			if err != nil {
 				return errors.New("create new table faile")
 			}
 			// 新表执行alter
-			alterSQL := strings.Replace(m.AlterSQL, m.TableName, newTableName, 1)
-			err = tx.Exec(alterSQL).Error
-			if err != nil {
-				return errors.New("new table alter failed")
+			{
+				alterSQL := strings.Replace(m.AlterSQL, m.TableName, newTableName, 1)
+				err = tx.Exec(alterSQL).Error
+				if err != nil {
+					tx.Migrator().DropTable(newTableName)
+					return errors.New("new table alter failed")
+				}
 			}
 			// 确认新表是否真的发生结构变更
 			// 如果没有变更，则删除新表
-			err = tx.Raw("SHOW CREATE TABLE " + newTableName).Scan(&result).Error
-			if err != nil {
-				return errors.New("show create new table " + newTableName + " failed")
+			{
+				err = tx.Raw("SHOW CREATE TABLE " + newTableName).Scan(&result).Error
+				if err != nil {
+					return errors.New("show create new table " + newTableName + " failed")
+				}
+				newTableDDL := result["Create Table"].(string)
+				if strings.Replace(newTableDDL, newTableName, m.TableName, 1) == oldTableDDL {
+					tx.Migrator().DropTable(newTableName)
+					return errors.New("there is no need to migrate")
+				}
 			}
-			if strings.Replace(result["Create Table"].(string), newTableDDL, m.TableName, 1) == oldTableDDL {
-				tx.Migrator().DropTable(newTableName)
-				return errors.New("there is no need to migrate")
-			}
+
 			// 获取原表最大id
 			var dstPrimary struct {
 				ID int64 `gorm:"column:id"`
