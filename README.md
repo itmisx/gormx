@@ -1,6 +1,9 @@
 # gormx
 
-重新实现了 gorm 的日志记录器，采用 github.com/itmisx/logger
+- 🚀 重新实现了 gorm 的日志记录器，采用 github.com/itmisx/logger
+- 🚀 实现了读写分离
+- 🚀 实现了数据库的自动分区管理
+- 🚀 实现了数据库结构在线变更(online ddl)
 
 ### 一、安装
 
