@@ -69,11 +69,18 @@ partition.Start()
 - 并自动 drop 过期的分区
 
 ### 六、Online DDL
-
+- 待迁移的model嵌入匿名gormx.Migration
 - 表需要使用 id(int)作为主键
 - 自动判断是否支持 Online ddl，如果不支持则自动创建新表，并通过 gorm 的钩子进行双写，并自动进行工作表切换。旧表需要手动删除
 - 示例
 ```go
+// 待迁移的model嵌入匿名Migration
+type migrationTest struct {
+ 	ID        int    `json:"id" gorm:"column:id;type:int(8);primaryKey;autoIncrement"`
+ 	Name      string `json:"name" gorm:"column:name;type:varchar(20)"`
+ 	Migration `gorm:"-"`
+}
+// 启动迁移
 migration := NewMigration(
   db,
   "migration_test",
