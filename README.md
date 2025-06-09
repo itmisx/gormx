@@ -42,6 +42,7 @@ db.Where(……).WithContext(spanCtx).Find(&users)
 > 通过配置参数 addrs 配置
 
 ### 五、分区
+> 这里主要是指按创建时间进行分区
 
 ##### 示例
 
@@ -57,7 +58,6 @@ partition.Start()
 ```
 
 ##### 参数说明
-
 - db，gorm 连接
 - database，操作的数据库
 - table，操作的表
