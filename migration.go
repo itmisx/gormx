@@ -74,6 +74,7 @@ const (
 	migrationStatus_completed   = 2
 )
 
+// 迁移表参数
 var migrationParams = make(map[string]*Migration)
 
 func NewMigration(
