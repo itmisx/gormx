@@ -2,6 +2,7 @@ package gormx
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -142,4 +143,46 @@ func TestMigratePartition(t *testing.T) {
 
 	// 阻塞
 	<-make(chan struct{})
+}
+
+func TestVersion(t *testing.T) {
+	// 实例化gorm
+	db, err := New(Config{
+		Username: "root",
+		Password: "123456",
+		Addrs:    []string{"127.0.0.1:13306", "127.0.0.1:13306"},
+		Database: "migration",
+		Debug:    true,
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+	vc := NewVersionController(db, MigrationStruct{}, installFunc)
+	vc.Upgrade()
+}
+
+func installFunc() {
+	fmt.Println("intall")
+}
+
+type MigrationStruct struct{}
+
+func (MigrationStruct) V1() {
+	fmt.Println("V1")
+}
+
+func (MigrationStruct) V2() {
+	fmt.Println("V2")
+	// 实例化gorm
+	db, err := New(Config{
+		Username: "root",
+		Password: "123456",
+		Addrs:    []string{"127.0.0.1:13306", "127.0.0.1:13306"},
+		Database: "migration",
+		Debug:    true,
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+	MigrateOnce(db, "123", func() { fmt.Println("migrate once") })
 }
