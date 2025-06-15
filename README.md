@@ -4,7 +4,7 @@
 - [x] 🚀 实现了读写分离
 - [x] 🚀 实现了数据库的自动分区管理
 - [x] 🚀 实现了数据库结构在线变更(online ddl)
-- [ ] 版本控制
+- [x] 🚀 版本控制
 
 ### 一、安装
 
@@ -102,4 +102,29 @@ migration := NewMigration(
   )`,
 )
 migration.Start()
+```
+### 七、版本控制
+``` go
+// 定义初始化安装
+func install(){
+  // 创建表1
+  // 创建表2
+  // ...
+  fmt.Println("intall")
+}
+
+// 定义升级方法
+type Upgrade struct{}
+
+func (Upgrade)V1(){
+  fmt.Println("upgrade v1")
+}
+
+func (Upgrade)V2(){
+  fmt.Println("upgrade v1")
+}
+
+// 使用gormx version controller
+vc:= gormx.NewVersionController(db,Upgrade{},install)
+vc.Upgrade()
 ```
