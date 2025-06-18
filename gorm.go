@@ -51,6 +51,10 @@ func New(cfg Config) (db *gorm.DB, err error) {
 		cfg.MaxIdleConns = 2
 	}
 
+	if len(cfg.Addrs) == 0 {
+		panic("database address is empty")
+	}
+
 	for index, host := range cfg.Addrs {
 		dsn := cfg.Username + ":" + cfg.Password + "@tcp(" + host + ")/" + cfg.Database + "?" + "charset=" + cfg.Charset + "&parseTime=True&loc=Local&timeout=5s"
 		// master
