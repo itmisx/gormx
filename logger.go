@@ -49,9 +49,10 @@ type mylogger struct {
 	logger.Config
 	infoStr, warnStr, errStr            string
 	traceStr, traceErrStr, traceWarnStr string
+	slowSqlHandler                      func(string, int64)
 }
 
-func NewLogger(writer logger.Writer, config logger.Config) logger.Interface {
+func NewLogger(writer logger.Writer, config logger.Config, slowSqlHandler func(string, int64)) logger.Interface {
 	var (
 		infoStr      = "%s\n[info] "
 		warnStr      = "%s\n[warn] "
@@ -70,14 +71,15 @@ func NewLogger(writer logger.Writer, config logger.Config) logger.Interface {
 		traceErrStr = RedBold + "%s " + MagentaBold + "%s\n" + Reset + Yellow + "[%.3fms] " + BlueBold + "[rows:%v]" + Reset + " %s"
 	}
 	return &mylogger{
-		Writer:       writer,
-		Config:       config,
-		infoStr:      infoStr,
-		warnStr:      warnStr,
-		errStr:       errStr,
-		traceStr:     traceStr,
-		traceWarnStr: traceWarnStr,
-		traceErrStr:  traceErrStr,
+		Writer:         writer,
+		Config:         config,
+		infoStr:        infoStr,
+		warnStr:        warnStr,
+		errStr:         errStr,
+		traceStr:       traceStr,
+		traceWarnStr:   traceWarnStr,
+		traceErrStr:    traceErrStr,
+		slowSqlHandler: slowSqlHandler,
 	}
 }
 
@@ -173,6 +175,9 @@ func (l mylogger) Trace(ctx context.Context, begin time.Time, fc func() (string,
 		sql, rows := fc()
 		sql = removeEscapeCharacter(sql)
 		slowLog := fmt.Sprintf("SLOW SQL >= %v", l.SlowThreshold)
+		if l.slowSqlHandler != nil {
+			l.slowSqlHandler(sql, int64(float64(elapsed.Nanoseconds())/1e6))
+		}
 		if rows == -1 {
 			if LocalDebug {
 				l.Printf(l.traceWarnStr, utils.FileWithLineNum(), slowLog, float64(elapsed.Nanoseconds())/1e6, "-", sql)
