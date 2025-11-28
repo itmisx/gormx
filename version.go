@@ -1,6 +1,7 @@
 package gormx
 
 import (
+	"errors"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -109,8 +110,8 @@ func (vc *versionController) Upgrade() error {
 func MigrateOnce(
 	db *gorm.DB,
 	migrationName string,
-	migrationFunc func(),
-) {
+	migrationFunc func() error,
+) error {
 	// 获取调用的函数（含包名）
 	pc, _, _, _ := runtime.Caller(1)
 	fullName := runtime.FuncForPC(pc).Name()
@@ -131,14 +132,20 @@ func MigrateOnce(
 		Where("version = ?", version).
 		Where("migration_name = ?", migrationName).Count(&count)
 	if count > 0 {
-		return
+		return errors.New("")
 	}
 	// 插入执行记录
-	rowsAffected := db.Model(&VersionLog{}).Create(&VersionLog{
-		Version:       int64(version),
-		MigrationName: migrationName,
-	}).RowsAffected
-	if rowsAffected == 1 {
-		migrationFunc()
-	}
+	return db.Transaction(func(tx *gorm.DB) error {
+		rowsAffected := db.Model(&VersionLog{}).Create(&VersionLog{
+			Version:       int64(version),
+			MigrationName: migrationName,
+		}).RowsAffected
+		if rowsAffected < 1 {
+			return errors.New("insert exec log failed")
+		}
+		if err := migrationFunc(); err != nil {
+			return errors.New(err.Error())
+		}
+		return nil
+	})
 }

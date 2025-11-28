@@ -184,5 +184,11 @@ func (MigrationStruct) V2() {
 	if err != nil {
 		panic(err.Error())
 	}
-	MigrateOnce(db, "123", func() { fmt.Println("migrate once") })
+	MigrateOnce(
+		db,
+		"123",
+		func() error {
+			fmt.Println("migrate once")
+			return nil
+		})
 }
