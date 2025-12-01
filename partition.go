@@ -34,11 +34,11 @@ import (
 )
 
 type partition struct {
-	db              *gorm.DB       // *gorm.DB
-	database        string         // 数据库名
-	table           string         // 表名
-	partitionUnit   PartitionUnitT // 分区单位 1-按天 2-按月
-	retentionMonths int            // 分区数据的保留时长
+	db                *gorm.DB       // *gorm.DB
+	database          string         // 数据库名
+	table             string         // 表名
+	partitionUnit     PartitionUnitT // 分区单位 1-按天 2-按月
+	retentionDuration time.Duration  // 分区数据的保留时长
 }
 
 type PartitionUnitT int // 分区单元
@@ -56,15 +56,15 @@ func NewPartition(
 	db *gorm.DB,
 	database string,
 	table string,
-	partitionUnit PartitionUnitT,
-	retentionMonths int,
+	partitionUnit PartitionUnitT, // 分区单位
+	retentionDuration time.Duration, // 数据保留时间
 ) *partition {
 	return &partition{
-		db:              db,
-		database:        database,
-		table:           table,
-		partitionUnit:   partitionUnit,
-		retentionMonths: retentionMonths,
+		db:                db,
+		database:          database,
+		table:             table,
+		partitionUnit:     partitionUnit,
+		retentionDuration: retentionDuration,
 	}
 }
 
@@ -172,7 +172,7 @@ func (p *partition) addYearPartition(ctx context.Context, years int) error {
 
 // dropExpiredPartitions 删除过期分区
 func (p *partition) dropExpiredPartitions(ctx context.Context) (err error) {
-	if p.retentionMonths <= 0 {
+	if p.retentionDuration <= 0 {
 		return nil
 	}
 	partitions, err := p.list(ctx)
@@ -180,7 +180,7 @@ func (p *partition) dropExpiredPartitions(ctx context.Context) (err error) {
 		return err
 	}
 	// 删除过期的分区
-	earliestPartition, _ := strconv.Atoi(strings.ReplaceAll(carbon.Now().SubMonths(p.retentionMonths-1).StartOfMonth().ToDateString(), "-", ""))
+	earliestPartition, _ := strconv.Atoi(strings.ReplaceAll(carbon.Now().SubNanoseconds(int(p.retentionDuration.Nanoseconds())).StartOfDay().ToDateString(), "-", ""))
 	for _, partition := range partitions {
 		partitionNum, _ := strconv.Atoi(strings.TrimLeft(partition, "p"))
 		if partitionNum < earliestPartition {

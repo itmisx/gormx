@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/dromara/carbon/v2"
 	"github.com/itmisx/logx"
 )
 
@@ -191,4 +193,9 @@ func (MigrationStruct) V2() {
 			fmt.Println("migrate once")
 			return nil
 		})
+}
+
+func TestXxx(t *testing.T) {
+	earliestPartition, _ := strconv.Atoi(strings.ReplaceAll(carbon.Now().SubNanoseconds(int(time.Hour*300)).StartOfDay().ToDateString(), "-", ""))
+	fmt.Println(earliestPartition)
 }
