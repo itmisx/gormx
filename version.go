@@ -1,7 +1,7 @@
 package gormx
 
 import (
-	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 	"runtime"
@@ -67,8 +67,14 @@ func (vc *versionController) Upgrade() error {
 	// 升序
 	sort.Ints(versionList)
 	// 读取versionLog,获取最新的版本
+	// 这里的错误必须检查：查询失败时 maxVersion 保持为 0，
+	// 会被当成「全新安装」而重跑 InstallFunc，在已有数据的库上重复执行安装逻辑
 	var maxVersion VersionLog
-	vc.DB.Model(&VersionLog{}).Select("max(version) as version").Take(&maxVersion)
+	if err := vc.DB.Model(&VersionLog{}).
+		Select("max(version) as version").
+		Take(&maxVersion).Error; err != nil {
+		return fmt.Errorf("read version log failed: %w", err)
+	}
 	if maxVersion.Version == 0 && len(versionList) > 0 {
 		vc.InstallFunc()
 		maxVersion.Version = int64(versionList[len(versionList)-1])
@@ -128,24 +134,34 @@ func MigrateOnce(
 
 	// 判断是否执行过
 	var count int64
-	db.Model(&VersionLog{}).
+	if err := db.Model(&VersionLog{}).
 		Where("version = ?", version).
-		Where("migration_name = ?", migrationName).Count(&count)
-	if count > 0 {
-		return errors.New("")
+		Where("migration_name = ?", migrationName).
+		Count(&count).Error; err != nil {
+		return fmt.Errorf("check migration %s failed: %w", migrationName, err)
 	}
-	// 插入执行记录
-	return db.Transaction(func(tx *gorm.DB) error {
-		rowsAffected := db.Model(&VersionLog{}).Create(&VersionLog{
-			Version:       int64(version),
-			MigrationName: migrationName,
-		}).RowsAffected
-		if rowsAffected < 1 {
-			return errors.New("insert exec log failed")
-		}
-		if err := migrationFunc(); err != nil {
-			return errors.New(err.Error())
-		}
+	if count > 0 {
+		// 已经执行过不是错误。若在这里返回 error，
+		// 调用方（升级函数）会把它一路带回 Upgrade，
+		// 导致第一次升级之后每次启动 Upgrade 都返回一个非 nil 的空错误
 		return nil
-	})
+	}
+
+	// 先执行迁移，成功之后再落执行记录
+	//
+	// 这里不套事务：migrationFunc 是无参闭包，用的是调用方自己的连接，
+	// 本来就并不进外层事务；而它多半执行 DDL，在 MySQL 里会隐式提交，
+	// 事务也覆盖不了。
+	// 顺序上必须「先执行、后记录」：反过来一旦迁移失败，
+	// 执行记录已经留下，这段迁移将永远不会被重试，且没有任何提示
+	if err := migrationFunc(); err != nil {
+		return fmt.Errorf("migration %s failed: %w", migrationName, err)
+	}
+	if err := db.Model(&VersionLog{}).Create(&VersionLog{
+		Version:       int64(version),
+		MigrationName: migrationName,
+	}).Error; err != nil {
+		return fmt.Errorf("save migration log of %s failed: %w", migrationName, err)
+	}
+	return nil
 }

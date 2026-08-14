@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,12 +35,20 @@ const (
 type LogLevel int
 
 func init() {
-	filepath.Walk("./", func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() && strings.Contains(info.Name(), "debug_bin") {
+	// 判断是否在 IDE 调试：只看当前目录一层即可
+	// 不能用 filepath.Walk 递归整个工作目录——被 import 就会在进程启动时
+	// 走完整棵目录树，容器里挂了大卷时启动会明显变慢；
+	// 且 Walk 在根路径 stat 失败时会传入 nil 的 FileInfo，回调里直接解引用会 panic
+	entries, err := os.ReadDir(".")
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		if !e.IsDir() && strings.Contains(e.Name(), "debug_bin") {
 			LocalDebug = true
+			break
 		}
-		return nil
-	})
+	}
 }
 
 type mylogger struct {
@@ -119,7 +126,7 @@ func (l mylogger) Warn(ctx context.Context, msg string, data ...interface{}) {
 					strs = append(strs, str)
 				}
 			}
-			logx.Info(ctx, msg, logx.String("line", utils.FileWithLineNum()), logx.StringSlice("detail", strs))
+			logx.Warn(ctx, msg, logx.String("line", utils.FileWithLineNum()), logx.StringSlice("detail", strs))
 		}
 	}
 }
@@ -130,7 +137,7 @@ func (l mylogger) Error(ctx context.Context, msg string, data ...interface{}) {
 		if LocalDebug {
 			l.Printf(l.errStr+msg, append([]interface{}{utils.FileWithLineNum()}, data...)...)
 		} else {
-			logx.Info(ctx, msg, logx.String("line", utils.FileWithLineNum()), logx.Any("detail", data))
+			logx.Error(ctx, msg, logx.String("line", utils.FileWithLineNum()), logx.Any("detail", data))
 		}
 	}
 }

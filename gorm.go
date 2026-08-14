@@ -81,7 +81,10 @@ func New(cfg Config) (db *gorm.DB, err error) {
 			for {
 				db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{Logger: myLogger})
 				if err != nil {
-					logx.Error(context.Background(), "mysql connection failed,retry...")
+					logx.Error(context.Background(), "mysql connection failed,retry...", logx.Err(err))
+					// 必须退避，否则数据库不可用时这里会变成忙循环，
+					// 以每秒上万次的速度重连并刷日志
+					time.Sleep(time.Second)
 				} else {
 					if cfg.Debug {
 						db = db.Debug()
@@ -120,6 +123,7 @@ func New(cfg Config) (db *gorm.DB, err error) {
 			)
 			if err != nil {
 				logx.Error(context.Background(), "replicas connection failed,retry...", logx.Err(err))
+				time.Sleep(time.Second)
 			} else {
 				break
 			}

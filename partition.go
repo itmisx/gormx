@@ -181,71 +181,82 @@ func (p *partition) dropExpiredPartitions(ctx context.Context) (err error) {
 	}
 	// 删除过期的分区
 	earliestPartition, _ := strconv.Atoi(strings.ReplaceAll(carbon.Now().SubNanoseconds(int(p.retentionDuration.Nanoseconds())).StartOfDay().ToDateString(), "-", ""))
+	// 逐个删除，单个失败不影响其余分区，最后返回第一个错误
+	var firstErr error
 	for _, partition := range partitions {
 		partitionNum, _ := strconv.Atoi(strings.TrimLeft(partition, "p"))
-		if partitionNum < earliestPartition {
-			sql := fmt.Sprintf(
-				"ALTER TABLE %s DROP PARTITION p%d",
-				p.table,
-				partitionNum,
-			)
-			err = p.db.WithContext(ctx).Exec(sql).Error
-			if err != nil {
-				logx.Error(context.Background(), fmt.Sprintf("drop  table %s partition %s failed", p.table, partition))
+		if partitionNum >= earliestPartition {
+			continue
+		}
+		sql := fmt.Sprintf(
+			"ALTER TABLE %s DROP PARTITION p%d",
+			p.table,
+			partitionNum,
+		)
+		if err := p.db.WithContext(ctx).Exec(sql).Error; err != nil {
+			logx.Error(ctx,
+				fmt.Sprintf("drop table %s partition %s failed", p.table, partition),
+				logx.Err(err))
+			if firstErr == nil {
+				firstErr = err
 			}
 		}
 	}
-	return err
+	return firstErr
+}
+
+// addNextPartitions 补齐未来两个周期的分区
+func (p *partition) addNextPartitions(ctx context.Context) error {
+	var add func(context.Context, int) error
+	switch p.partitionUnit {
+	case PartitionUnitDay:
+		add = p.addDayPartition
+	case PartitionUnitMonth:
+		add = p.addMonthPartition
+	case PartitionUnitYear:
+		add = p.addYearPartition
+	default:
+		return fmt.Errorf("unsupported partition unit type: %d", p.partitionUnit)
+	}
+	for _, n := range []int{1, 2} {
+		if err := add(ctx, n); err != nil {
+			return fmt.Errorf("add partition of %s failed: %w", p.table, err)
+		}
+	}
+	return nil
 }
 
 // Start 启动分区自动管理
-func (p *partition) Start() {
+// 以语句形式调用（p.Start()）时返回值可以忽略，不影响既有代码
+func (p *partition) Start() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	// 初始化
-	switch p.partitionUnit {
-	// 按天分区
-	case PartitionUnitDay:
-		p.addDayPartition(ctx, 1)
-		p.addDayPartition(ctx, 2)
-	// 按月分区
-	case PartitionUnitMonth:
-		p.addMonthPartition(ctx, 1)
-		p.addMonthPartition(ctx, 2)
-	// 按年分区
-	case PartitionUnitYear:
-		p.addYearPartition(ctx, 1)
-		p.addYearPartition(ctx, 2)
-	default:
-		panic("unsupported partition unit type")
+	// 分区单位不合法属于调用方的配置错误，返回错误而不是 panic 掉整个进程
+	if err := p.addNextPartitions(ctx); err != nil {
+		return err
 	}
 	// 定时检查，并自动创建分区，并删除过期的分区
+	// 间隔取到局部变量里再钳制，避免多张表各自 Start 时并发读写包级变量
+	interval := DefaultCronDuration
+	if interval < time.Second*10 {
+		interval = time.Second * 10
+	}
 	go func() {
-		if DefaultCronDuration < time.Second*10 {
-			DefaultCronDuration = time.Second * 10
-		}
-		ticker := time.NewTicker(DefaultCronDuration)
-		for {
-			<-ticker.C
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for range ticker.C {
 			func() {
 				ctx1, cancel1 := context.WithTimeout(context.Background(), time.Second*30)
 				defer cancel1()
-				switch p.partitionUnit {
-				// 按天分区
-				case PartitionUnitDay:
-					p.addDayPartition(ctx1, 1)
-					p.addDayPartition(ctx1, 2)
-				// 按月分区
-				case PartitionUnitMonth:
-					p.addMonthPartition(ctx1, 1)
-					p.addMonthPartition(ctx1, 2)
-				// 按年分区
-				case PartitionUnitYear:
-					p.addYearPartition(ctx1, 1)
-					p.addYearPartition(ctx1, 2)
+				if err := p.addNextPartitions(ctx1); err != nil {
+					logx.Error(ctx1, "add partition failed", logx.Err(err))
 				}
-				p.dropExpiredPartitions(ctx1)
+				if err := p.dropExpiredPartitions(ctx1); err != nil {
+					logx.Error(ctx1, "drop expired partition failed", logx.Err(err))
+				}
 			}()
 		}
 	}()
+	return nil
 }
