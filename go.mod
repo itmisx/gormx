@@ -6,6 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/dromara/carbon/v2 v2.6.7
+	github.com/go-sql-driver/mysql v1.9.2
 	github.com/itmisx/logx v0.0.12
 	github.com/samber/lo v1.50.0
 	gorm.io/driver/mysql v1.5.7
@@ -28,7 +29,6 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
-	github.com/go-sql-driver/mysql v1.9.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
