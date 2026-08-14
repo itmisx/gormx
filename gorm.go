@@ -53,6 +53,23 @@ func New(cfg Config) (db *gorm.DB, err error) {
 		cfg.MaxIdleConns = 2
 	}
 
+	// 默认连接最长重用5分钟
+	// 为 0 时 database/sql 会永久复用连接，而服务端到点会主动断开
+	// （MySQL 的 wait_timeout 默认 28800 秒），客户端再拿这条连接就会报
+	// invalid connection。链路中间的负载均衡、代理往往还有更短的空闲超时，
+	// 因此取一个足够小的值兜底
+	if cfg.MaxLifetime == 0 {
+		cfg.MaxLifetime = 300
+	}
+
+	// 默认空闲连接最长保留1分钟
+	// 为 0 时空闲连接不会因闲置被回收，只能等 MaxLifetime 到期，
+	// 低峰期每个实例都会一直占着服务端会话。
+	// 该值需小于 MaxLifetime 才有意义，否则连接总是先因超过最长重用时间被回收
+	if cfg.MaxIdleTime == 0 {
+		cfg.MaxIdleTime = 60
+	}
+
 	if len(cfg.Addrs) == 0 {
 		panic("database address is empty")
 	}
